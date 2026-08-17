@@ -17,7 +17,7 @@ It sticks to evidence macOS actually reports. If a display route cannot be
 resolved, or a slower link might have several causes, `cluesb` says so instead
 of declaring that a cable, hub, KVM, or device is broken.
 
-> TUI screenshot coming soon — planned location: `readme/cluesb-tui.png`
+![cluesb TUI showing display, Thunderbolt, and USB topology](readme/cluesb-tui.png)
 
 ## CLI
 
