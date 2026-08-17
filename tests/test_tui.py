@@ -6,7 +6,6 @@ from rich.style import Style
 from textual.containers import VerticalScroll
 from textual.widgets import RichLog
 
-import cluesb.tui.app as tui_app
 from cluesb.collectors.ioreg import parse_ioreg
 from cluesb.model import ClassificationConfidence, HealthStatus, NodeKind, UsbSnapshot
 from cluesb.tui.app import (
@@ -34,32 +33,6 @@ class StaticMonitor:
 
     def resume(self):
         pass
-
-
-def companion_hub_snapshot() -> tuple[UsbSnapshot, str, str]:
-    snapshot = parse_ioreg(archive())
-    controller = next(node for node in snapshot.nodes.values() if node.kind is NodeKind.CONTROLLER)
-    source = next(node for node in snapshot.nodes.values() if node.kind is NodeKind.HUB)
-    usb3 = replace(
-        source,
-        id="usb3-hub",
-        name="Dual Hub USB 3",
-        children=(),
-        speed_bps=5_000_000_000,
-        speed_name="USB 5Gbps",
-        physical_identity="strong-hub-identity",
-    )
-    usb2 = replace(
-        source,
-        id="usb2-hub",
-        name="Dual Hub USB 2",
-        children=(),
-        speed_bps=480_000_000,
-        speed_name="USB 480Mbps",
-        physical_identity="strong-hub-identity",
-    )
-    controller = replace(controller, children=(usb3.id, usb2.id))
-    return replace(snapshot, nodes={controller.id: controller, usb3.id: usb3, usb2.id: usb2}), usb3.id, usb2.id
 
 
 def tree_click_offset(tree, branch, *, toggle):
@@ -132,33 +105,6 @@ def test_usb_labels_use_original_names_and_one_based_tiers():
     assert TopologyTree._label(hub).plain == "✓ Fast Hub — USB 5Gbps — Tier 2"
     assert TopologyTree._label(device).plain == "? Partial Device — Unknown — Tier 3"
     assert "01000000" not in TopologyTree._label(hub).plain
-
-
-def test_strong_usb2_usb3_hub_identity_resolves_in_both_directions():
-    snapshot, usb3_id, usb2_id = companion_hub_snapshot()
-
-    assert tui_app.find_usb_companion_hub(snapshot, usb3_id) == usb2_id
-    assert tui_app.find_usb_companion_hub(snapshot, usb2_id) == usb3_id
-
-
-@pytest.mark.parametrize("case", ["missing_identity", "same_family", "unknown_speed", "ambiguous"])
-def test_companion_hub_resolution_rejects_weak_or_ambiguous_matches(case):
-    snapshot, usb3_id, usb2_id = companion_hub_snapshot()
-    nodes = dict(snapshot.nodes)
-    usb3 = nodes[usb3_id]
-    usb2 = nodes[usb2_id]
-    if case == "missing_identity":
-        nodes[usb2_id] = replace(usb2, physical_identity=None, name=usb3.name)
-    elif case == "same_family":
-        nodes[usb2_id] = replace(usb2, speed_bps=5_000_000_000, speed_name="USB 5Gbps")
-    elif case == "unknown_speed":
-        nodes[usb2_id] = replace(usb2, speed_bps=None, speed_name="Unknown")
-    else:
-        duplicate = replace(usb2, id="second-usb2-hub")
-        nodes[duplicate.id] = duplicate
-    snapshot = replace(snapshot, nodes=nodes)
-
-    assert tui_app.find_usb_companion_hub(snapshot, usb3_id) is None
 
 
 @pytest.mark.parametrize(
@@ -685,89 +631,49 @@ async def test_clicking_leaf_selects_it_for_details():
         assert not device.allow_expand
 
 
-async def test_selecting_companion_hub_outlines_only_the_other_hub():
-    snapshot, usb3_id, usb2_id = companion_hub_snapshot()
-    app = CluesbApp(interval=10, monitor=StaticMonitor(snapshot))
-    async with app.run_test() as pilot:
-        app._render_snapshot()
-        await pilot.pause()
-        tree = app.query_one("#topology", TopologyTree)
-        usb3 = tree._nodes_by_usb_id[usb3_id]
-        usb2 = tree._nodes_by_usb_id[usb2_id]
-
-        tree.move_cursor(usb3)
-        await pilot.pause()
-
-        assert app._selected_id == usb3_id
-        assert tree.cursor_node is usb3
-        assert not tree.render_label(usb3, Style(), Style()).plain.startswith("⟦ ")
-        companion_label = tree.render_label(usb2, Style(), Style())
-        assert companion_label.plain.startswith("⟦ ")
-        assert companion_label.plain.endswith(" ⟧")
-        assert any(span.style == "#B9AFFF" for span in companion_label.spans)
-        assert "Name: Dual Hub USB 3" in str(app.query_one("#details-content").content)
-
-        tree.move_cursor(usb2)
-        await pilot.pause()
-        assert tree.cursor_node is usb2
-        assert tree.render_label(usb3, Style(), Style()).plain.startswith("⟦ ")
-        assert not tree.render_label(usb2, Style(), Style()).plain.startswith("⟦ ")
-
-
-async def test_companion_highlight_clears_for_non_hub_and_does_not_change_tree_visibility():
-    snapshot, usb3_id, usb2_id = companion_hub_snapshot()
-    app = CluesbApp(interval=10, monitor=StaticMonitor(snapshot))
-    async with app.run_test() as pilot:
-        app._render_snapshot()
-        await pilot.pause()
-        tree = app.query_one("#topology", TopologyTree)
-        usb3 = tree._nodes_by_usb_id[usb3_id]
-        controller = usb3.parent
-        tree._usb_root.collapse()
-
-        app._select_node(usb3_id)
-        await pilot.pause()
-
-        assert tree._usb_root.is_expanded is False
-        assert tree._nodes_by_usb_id[usb2_id] is not None
-
-        app.filter_text = "Dual Hub USB 3"
-        app._render_snapshot()
-        await pilot.pause()
-        assert app.filter_text == "Dual Hub USB 3"
-        assert usb2_id not in tree._nodes_by_usb_id
-        assert tree._usb_root.is_expanded is False
-
-        app.filter_text = ""
-        app._render_snapshot()
-        await pilot.pause()
-        app._select_node(controller.data)
-        await pilot.pause()
-        assert not tree.render_label(
-            tree._nodes_by_usb_id[usb2_id], Style(), Style()
-        ).plain.startswith("⟦ ")
-
-
-async def test_companion_highlight_survives_incremental_refresh_without_rebuilding_nodes():
-    snapshot, usb3_id, usb2_id = companion_hub_snapshot()
+async def test_selecting_equivalent_usb_hubs_keeps_rows_visually_independent():
+    snapshot = parse_ioreg(archive())
+    controller = next(node for node in snapshot.nodes.values() if node.kind is NodeKind.CONTROLLER)
+    source = next(node for node in snapshot.nodes.values() if node.kind is NodeKind.HUB)
+    usb3 = replace(
+        source, id="usb3-hub", name="Dual Hub USB 3", children=(),
+        speed_bps=5_000_000_000, speed_name="USB 5Gbps",
+        physical_identity="strong-hub-identity",
+    )
+    usb2 = replace(
+        source, id="usb2-hub", name="Dual Hub USB 2", children=(),
+        speed_bps=480_000_000, speed_name="USB 480Mbps",
+        physical_identity="strong-hub-identity",
+    )
+    controller = replace(controller, children=(usb3.id, usb2.id))
+    snapshot = replace(snapshot, nodes={controller.id: controller, usb3.id: usb3, usb2.id: usb2})
     monitor = StaticMonitor(snapshot)
     app = CluesbApp(interval=10, monitor=monitor)
     async with app.run_test() as pilot:
         app._render_snapshot()
         await pilot.pause()
         tree = app.query_one("#topology", TopologyTree)
-        usb3 = tree._nodes_by_usb_id[usb3_id]
-        usb2 = tree._nodes_by_usb_id[usb2_id]
-        tree.move_cursor(usb3)
+        usb3_branch = tree._nodes_by_usb_id[usb3.id]
+        usb2_branch = tree._nodes_by_usb_id[usb2.id]
+        tree.move_cursor(usb3_branch)
         await pilot.pause()
+
+        assert tree.cursor_node is usb3_branch
+        assert tree.render_label(usb2_branch, Style(), Style()).plain.startswith("• ✓ ")
+        assert "Name: Dual Hub USB 3" in str(app.query_one("#details-content").content)
 
         app._render_snapshot()
         await pilot.pause()
 
-        assert tree._nodes_by_usb_id[usb3_id] is usb3
-        assert tree._nodes_by_usb_id[usb2_id] is usb2
-        assert tree.cursor_node is usb3
-        assert tree.render_label(usb2, Style(), Style()).plain.startswith("⟦ ")
+        assert tree._nodes_by_usb_id[usb3.id] is usb3_branch
+        assert tree._nodes_by_usb_id[usb2.id] is usb2_branch
+        assert tree.cursor_node is usb3_branch
+
+        tree.move_cursor(usb2_branch)
+        await pilot.pause()
+        assert tree.cursor_node is usb2_branch
+        assert tree.render_label(usb3_branch, Style(), Style()).plain.startswith("• ✓ ")
+        assert "Name: Dual Hub USB 2" in str(app.query_one("#details-content").content)
 
 
 async def test_enter_selects_and_toggles_highlighted_branch():

@@ -51,41 +51,6 @@ WARM_PERIWINKLE_THEME = Theme(
 )
 
 
-def find_usb_companion_hub(snapshot: UsbSnapshot, selected_id: str | None) -> str | None:
-    """Return a uniquely identified hub on the opposite USB link family."""
-    selected = snapshot.nodes.get(selected_id) if selected_id else None
-    if (
-        selected is None
-        or selected.kind is not NodeKind.HUB
-        or selected.physical_identity is None
-        or selected.speed_bps is None
-    ):
-        return None
-
-    def link_family(speed_bps: int | None) -> int | None:
-        if speed_bps is None:
-            return None
-        if speed_bps <= 480_000_000:
-            return 2
-        if speed_bps >= 5_000_000_000:
-            return 3
-        return None
-
-    selected_family = link_family(selected.speed_bps)
-    identity_group = [
-        node
-        for node in snapshot.nodes.values()
-        if node.kind is NodeKind.HUB
-        and node.physical_identity == selected.physical_identity
-    ]
-    if selected_family is None or len(identity_group) != 2:
-        return None
-    companion = next((node for node in identity_group if node.id != selected.id), None)
-    if companion is None or link_family(companion.speed_bps) not in ({2, 3} - {selected_family}):
-        return None
-    return companion.id
-
-
 class TopologyTree(Tree[str]):
     """Tree whose space key is reserved for the application's pause action."""
 
@@ -97,7 +62,6 @@ class TopologyTree(Tree[str]):
     ]
 
     def __init__(self, label: str, **kwargs: Any) -> None:
-        self._companion_highlight_id: str | None = None
         super().__init__(label, **kwargs)
         self.auto_expand = False
         self.show_root = False
@@ -172,17 +136,7 @@ class TopologyTree(Tree[str]):
         label = super().render_label(node, base_style, style)
         if not node.allow_expand:
             label = Text.assemble(("• ", base_style), label)
-        if node.data == self._companion_highlight_id:
-            return Text.assemble(
-                Text("⟦ ", style="#B9AFFF"), label, Text(" ⟧", style="#B9AFFF")
-            )
         return label
-
-    def set_companion_highlight(self, node_id: str | None) -> None:
-        visible_id = node_id if node_id in self._nodes_by_usb_id else None
-        if visible_id != self._companion_highlight_id:
-            self._companion_highlight_id = visible_id
-            self.refresh(layout=True)
 
     def _remove_indexed_branch(self, branch: Any) -> None:
         for child in tuple(branch.children):
@@ -793,7 +747,6 @@ class CluesbApp(App[None]):
             matching_display_ids(snapshot, self.filter_text),
             matching_thunderbolt_ids(snapshot, self.filter_text),
         )
-        tree.set_companion_highlight(find_usb_companion_hub(snapshot, self._selected_id))
         self._render_events(snapshot)
         if self.paused:
             self.sub_title = "PAUSED"
@@ -812,8 +765,6 @@ class CluesbApp(App[None]):
     def _select_node(self, node_id: str) -> None:
         selection_changed = node_id != self._selected_id
         self._selected_id = node_id
-        tree = self.query_one("#topology", TopologyTree)
-        tree.set_companion_highlight(find_usb_companion_hub(self.monitor.displayed, node_id))
         self._render_details()
         if selection_changed:
             details = self.query_one("#details", VerticalScroll)
