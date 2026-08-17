@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><array><dict>
+<key>_dataType</key><string>SPDisplaysDataType</string>
+<key>_items</key><array><dict>
+<key>_name</key><string>Apple M5 Pro</string>
+<key>sppci_bus</key><string>spdisplays_builtin</string>
+<key>sppci_device_type</key><string>spdisplays_gpu</string>
+<key>spdisplays_ndrvs</key><array><dict>
+<key>_name</key><string>Color LCD</string>
+<key>_spdisplays_display-vendor-id</key><string>610</string>
+<key>_spdisplays_display-product-id</key><string>a05f</string>
+<key>_spdisplays_display-serial-number</key><string>1234</string>
+<key>_spdisplays_pixels</key><string>3024 x 1964</string>
+<key>_spdisplays_resolution</key><string>1512 x 982 @ 120.00Hz</string>
+<key>spdisplays_depth</key><string>30-Bit Color (ARGB2101010)</string>
+<key>spdisplays_connection_type</key><string>spdisplays_internal</string>
+<key>spdisplays_main</key><string>spdisplays_yes</string>
+<key>spdisplays_online</key><string>spdisplays_yes</string>
+</dict></array></dict></array>
+</dict></array></plist>

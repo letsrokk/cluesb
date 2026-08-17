@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><array><dict>
+<key>_dataType</key><string>SPThunderboltDataType</string>
+<key>_items</key><array><dict>
+<key>_name</key><string>Thunderbolt/USB4 Bus 0</string>
+<key>domain_uuid_key</key><string>domain-1</string>
+<key>route_string_key</key><string>0</string>
+<key>receptacle_1_tag</key><dict>
+<key>receptacle_id_key</key><string>1</string>
+<key>current_speed_key</key><string>Up to 40 Gb/s</string>
+</dict>
+<key>_items</key><array><dict>
+<key>_name</key><string>Example Dock</string>
+<key>route_string_key</key><string>1</string>
+<key>device_uid_key</key><string>dock-1</string>
+<key>current_speed_key</key><string>40 Gb/s</string>
+<key>_items</key><array><dict>
+<key>_name</key><string>Display Adapter</string>
+<key>route_string_key</key><string>3</string>
+<key>device_uid_key</key><string>adapter-1</string>
+<key>current_speed_key</key><string>20 Gb/s</string>
+</dict></array>
+</dict></array></dict></array>
+</dict></array></plist>

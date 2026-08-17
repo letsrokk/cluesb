@@ -1,0 +1,27 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.py[cod]
+
+# Packaging and standalone build output
+build/
+dist/
+*.egg-info/
+
+# Test and coverage output
+.coverage
+.coverage.*
+htmlcov/
+
+# Local application exports
+cluesb-*.json
+
+# macOS metadata
+.DS_Store
+
+# Local design and implementation notes
+docs/
+
+# Local design comparison sessions
+.superpowers/

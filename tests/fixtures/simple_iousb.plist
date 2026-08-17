@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+  <key>IORegistryEntryName</key><string>Root</string>
+  <key>IORegistryPlanes</key><dict><key>IOUSB</key><string>IOUSB</string></dict>
+  <key>IORegistryEntryChildren</key><array><dict>
+    <key>IORegistryEntryName</key><string>Example XHCI</string>
+    <key>IOObjectClass</key><string>AppleUSBXHCI</string>
+    <key>IORegistryEntryID</key><integer>100</integer>
+    <key>IOMatchCategory</key><string>usb-host</string>
+    <key>IORegistryEntryChildren</key><array><dict>
+      <key>IORegistryEntryName</key><string>Example Hub</string>
+      <key>IOObjectClass</key><string>IOUSBHostDevice</string>
+      <key>IORegistryEntryID</key><integer>101</integer>
+      <key>idVendor</key><integer>4660</integer>
+      <key>idProduct</key><integer>22136</integer>
+      <key>bDeviceClass</key><integer>9</integer>
+      <key>UsbLinkSpeed</key><integer>5000000000</integer>
+    </dict></array>
+  </dict></array>
+</dict></plist>
